@@ -2,7 +2,7 @@
 
 int main(){
 
-    FILE *fptr = fopen("text.txt","r");
+    FILE *fptr = fopen("CMakeLists.txt","r");
 
     char content[1000];
 
