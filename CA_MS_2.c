@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 /*CA lab notes
 - Must convert instructions to binary, then convert it to decimal which will be stored in the memory array
 - read the tables instruction has an opcode. And its function.
@@ -9,11 +10,55 @@
 - this is 90% of the project
 - pipeline still didn't take it
 */
-int registerFile [] = {22,16,87,54,102,434,33,67,98,49,55,9,18,1,32,45};
-int instructionMemory[] = {1024,2048};
-int NumberofInstructions = sizeof(instructionMemory)/sizeof(int);
-int pc = 0;
+uint16_t instructionMemory[1024];
+uint8_t dataMemory[2048];     
+uint8_t registers[64];
+   
+uint8_t SREG;
+uint16_t pc;
 
+#define C_FLAG 4  // Carry Flag
+#define V_FLAG 3  // Overflow Flag
+#define N_FLAG 2  // Negative Flag
+#define S_FLAG 1  // Sign Flag
+#define Z_FLAG 0  // Zero Flag
+
+#define NumberofInstructions 10
+
+void set_flag(int flag_bit) {
+    SREG |= (1<<flag_bit);//1<<0,
+}
+
+void clear_flag(int flag_bit) {
+    SREG &= ~(1<<flag_bit);
+}
+
+int get_flag(int flag_bit) {
+    return (SREG>>flag_bit)&0b1;
+}
+
+void update_flags(uint8_t result, int overflow, int carry) {
+    if (result == 0) {
+        set_flag(Z_FLAG);
+    } else {
+        clear_flag(Z_FLAG);
+    }
+    if (result & 0x80) {
+        set_flag(N_FLAG);
+    } else {
+        clear_flag(N_FLAG);
+    }
+    if (overflow) {
+        set_flag(V_FLAG);
+    } else {
+        clear_flag(V_FLAG);
+    }
+    if (carry) {
+        set_flag(C_FLAG);
+    } else {
+        clear_flag(C_FLAG);
+    }
+}
 // Binary int format in c is 0b00000000000000000000000000000000 (32 bits)
 void decode(int instruction);
 void fetch() {
