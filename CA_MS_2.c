@@ -29,6 +29,12 @@ void set_flag(int flag_bit) {
     SREG |= (1<<flag_bit);//1<<0,
 }
 
+/*
+   1
+   1
+10    
+*/
+
 void clear_flag(int flag_bit) {
     SREG &= ~(1<<flag_bit);
 }
@@ -43,7 +49,7 @@ void update_flags(uint8_t result, int overflow, int carry) {
     } else {
         clear_flag(Z_FLAG);
     }
-    if (result & 0x80) {
+    if (result & 0x80) { //10000000
         set_flag(N_FLAG);
     } else {
         clear_flag(N_FLAG);
@@ -57,6 +63,11 @@ void update_flags(uint8_t result, int overflow, int carry) {
         set_flag(C_FLAG);
     } else {
         clear_flag(C_FLAG);
+    }
+    if (N_FLAG ^ V_FLAG){
+        set_flag(S_FLAG);
+    }else{
+        clear_flag(S_FLAG);
     }
 }
 // Binary int format in c is 0b00000000000000000000000000000000 (32 bits)
@@ -76,53 +87,78 @@ void fetch() {
        
 }
 
+//
 void decode(int instruction) {
        
-        int opcode = instruction>>12;  // bits31:26
-        int r1 = (instruction>>6)&0b111111;      // bits25:21
-        int r2_imm = instruction&0b111111;      // bit20:16
+        int opcode = instruction>>12; 
+        int r1 = (instruction>>6)&0b111111;     
+        int r2_imm = instruction&0b111111;      
 
+        int carry = 0;
+        int overflow =0;
+        uint8_t result =0;
         // Complete the decode() body...
+        
+
         switch (opcode) {
             case 0: // ADD
                 printf(", ADD R%d, R%d\n",r1,r2_imm);
+                registers[r1] = registers[r1] + registers[r2_imm];
                 break;
             case 1: // SUB
                 printf(", SUB R%d, R%d\n",r1,r2_imm);
+                registers[r1] = registers[r1] - registers[r2_imm];
                 break;
             case 2: // MUL
                 printf(", MUL R%d, R%d\n",r1,r2_imm);
+                registers[r1] = registers[r1] * registers[r2_imm];
                 break;
-            case 3: // ANDI
-                printf(", ANDI R%d, R%d\n",r1,r2_imm);
+            case 3: // LDI
+                printf(", LDI R%d, R%d\n",r1,r2_imm);
+                registers[r1] = r2_imm;
                 break;
-            case 4: // EOR
-                printf(", EOR R%d, R%d\n",r1,r2_imm);
+            case 4: // BEQZ
+                printf(", BEQZ R%d, R%d\n",r1,r2_imm);
+                if (registers[r1] == 0) {
+                    pc += r2_imm+1; 
+                }
                 break;
-            case 5: // LDM
-                printf(", LDM R%d, R%d\n",r1,r2_imm);
+            case 5: // AND
+                printf(", AND R%d, R%d\n",r1,r2_imm);
+                registers[r1] = registers[r1] & registers[r2_imm];
                 break;
-            case 6: // STM
-                printf(", STM R%d, R%d\n",r1,r2_imm);
+            case 6: // OR
+                printf(", OR R%d, R%d\n",r1,r2_imm);
+                registers[r1] = registers[r1] | registers[r2_imm];
                 break;
-            case 7: // SAL
-                printf(", SAL R%d, %d\n",r1, r2_imm);
+            case 7: // JR
+                printf(", JR R%d, %d\n",r1, r2_imm);
+                pc = (8<<registers[r1]) | registers[r2_imm]; 
                 break;
-            case 8: // SAR
-                printf(", SAR R%d, %d\n",r1, r2_imm);
+            case 8: // SLC
+                printf(", SLC R%d, %d\n",r1, r2_imm);
+                uint8_t originalLeftPart = (registers[r1]>> (8-r2_imm)) & ((1<<r2_imm)-1); //the & is to remove 1's introduced from sign extension from shift operation if number is negative
+                registers[r1] = registers[r1] << r2_imm | originalLeftPart;
                 break;
-            case 9: // JMP
-                printf(", JMP %d\n", r2_imm);
+                //01101000  slc r1 2    
+            case 9: // SRC
+                printf(", SRC %d\n", r2_imm);
+                uint8_t originalRightPart = registers[r1] & ((1<<r2_imm)-1); 
+                registers[r1] = originalRightPart | registers[r1]>>r2_imm;
                 break;
-            case 10: // JR
-                printf(", JR R%d, R%d\n",r1,r2_imm);
+                //01101001     2
+            case 10: // LB
+                printf(", LB R%d, R%d\n",r1,r2_imm);
+                registers[r1] = dataMemory[r2_imm];
                 break;
-            case 11: // BEQZ
-                printf(", BEQZ R%d, %d\n",r1, r2_imm);
+            case 11: // SB
+                printf(", SB R%d, %d\n",r1, r2_imm);
+                dataMemory[r2_imm] = registers[r1];
                 break;
             default:
                 printf(", Unknown opcode\n");
         }
+        update_flags(result,carry,overflow);
        
         // Printings
        
