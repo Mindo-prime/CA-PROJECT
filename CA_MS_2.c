@@ -95,70 +95,110 @@ void decode(int instruction) {
         int r2_imm = instruction&0b111111;      
 
         int carry = 0;
-        int overflow =0;
-        uint8_t result =0;
+        int overflow = 0;
+        uint8_t result = 0;
         // Complete the decode() body...
         
-
         switch (opcode) {
             case 0: // ADD
                 printf(", ADD R%d, R%d\n",r1,r2_imm);
-                registers[r1] = registers[r1] + registers[r2_imm];
+                result = registers[r1] + registers[r2_imm];
+                // Carry: if sum exceeds 255
+                carry = ((int)registers[r1] + (int)registers[r2_imm]) > 0xFF;
+                // Overflow: if same sign operands, result has different sign
+                overflow = (~(registers[r1] ^ registers[r2_imm]) & (registers[r1] ^ result) & 0x80) ? 1 : 0;
+                registers[r1] = result;
+                update_flags(result, overflow, carry);
                 break;
             case 1: // SUB
                 printf(", SUB R%d, R%d\n",r1,r2_imm);
-                registers[r1] = registers[r1] - registers[r2_imm];
+                result = registers[r1] - registers[r2_imm];
+                // Carry: if borrow occurs (registers[r1] < registers[r2_imm])
+                carry = registers[r1] < registers[r2_imm];
+                // Overflow: if operands have different signs and result sign differs from registers[r1]
+                overflow = (((registers[r1] ^ registers[r2_imm]) & (registers[r1] ^ result)) & 0x80) ? 1 : 0;
+                registers[r1] = result;
+                update_flags(result, overflow, carry);
                 break;
             case 2: // MUL
                 printf(", MUL R%d, R%d\n",r1,r2_imm);
-                registers[r1] = registers[r1] * registers[r2_imm];
+                result = registers[r1] * registers[r2_imm];
+                // Carry: if result exceeds 8 bits
+                carry = ((int)registers[r1] * (int)registers[r2_imm]) > 0xFF;
+                // Overflow: not typically set for MUL, set to 0
+                overflow = 0;
+                registers[r1] = result;
+                update_flags(result, overflow, carry);
                 break;
             case 3: // LDI
                 printf(", LDI R%d, R%d\n",r1,r2_imm);
-                registers[r1] = r2_imm;
+                result = r2_imm;
+                registers[r1] = result;
+                // No carry/overflow for LDI
+                update_flags(result, 0, 0);
                 break;
             case 4: // BEQZ
                 printf(", BEQZ R%d, R%d\n",r1,r2_imm);
                 if (registers[r1] == 0) {
                     pc += r2_imm+1; 
                 }
+                // No flags updated for BEQZ
                 break;
             case 5: // AND
                 printf(", AND R%d, R%d\n",r1,r2_imm);
-                registers[r1] = registers[r1] & registers[r2_imm];
+                result = registers[r1] & registers[r2_imm];
+                registers[r1] = result;
+                // No carry/overflow for AND
+                update_flags(result, 0, 0);
                 break;
             case 6: // OR
                 printf(", OR R%d, R%d\n",r1,r2_imm);
-                registers[r1] = registers[r1] | registers[r2_imm];
+                result = registers[r1] | registers[r2_imm];
+                registers[r1] = result;
+                // No carry/overflow for OR
+                update_flags(result, 0, 0);
                 break;
             case 7: // JR
                 printf(", JR R%d, %d\n",r1, r2_imm);
                 pc = (8<<registers[r1]) | registers[r2_imm]; 
+                // No flags updated for JR
                 break;
             case 8: // SLC
                 printf(", SLC R%d, %d\n",r1, r2_imm);
-                uint8_t originalLeftPart = (registers[r1]>> (8-r2_imm)) & ((1<<r2_imm)-1); //the & is to remove 1's introduced from sign extension from shift operation if number is negative
-                registers[r1] = registers[r1] << r2_imm | originalLeftPart;
+                {
+                    uint8_t originalLeftPart = (registers[r1]>> (8-r2_imm)) & ((1<<r2_imm)-1); 
+                    result = (registers[r1] << r2_imm) | originalLeftPart;
+                    registers[r1] = result;
+                    // Carry: last bit shifted out
+                    carry = (registers[r1] >> (8 - r2_imm)) & 0x1;
+                    update_flags(result, 0, carry);
+                }
                 break;
-                //01101000  slc r1 2    
             case 9: // SRC
                 printf(", SRC %d\n", r2_imm);
-                uint8_t originalRightPart = registers[r1] & ((1<<r2_imm)-1); 
-                registers[r1] = originalRightPart | registers[r1]>>r2_imm;
+                {
+                    uint8_t originalRightPart = registers[r1] & ((1<<r2_imm)-1); 
+                    result = originalRightPart | (registers[r1]>>r2_imm);
+                    registers[r1] = result;
+                    // Carry: last bit shifted out
+                    carry = (registers[r1] >> (r2_imm - 1)) & 0x1;
+                    update_flags(result, 0, carry);
+                }
                 break;
-                //01101001     2
             case 10: // LB
                 printf(", LB R%d, R%d\n",r1,r2_imm);
-                registers[r1] = dataMemory[r2_imm];
+                result = dataMemory[r2_imm];
+                registers[r1] = result;
+                update_flags(result, 0, 0);
                 break;
             case 11: // SB
                 printf(", SB R%d, %d\n",r1, r2_imm);
                 dataMemory[r2_imm] = registers[r1];
+                // No flags updated for SB
                 break;
             default:
                 printf(", Unknown opcode\n");
         }
-        update_flags(result,carry,overflow);
        
         // Printings
        
