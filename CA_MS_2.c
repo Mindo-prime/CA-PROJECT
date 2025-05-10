@@ -1,4 +1,4 @@
-//gcc program CA_MS_2.c assembly_parser.c -o CA_MS_2
+//gcc CA_MS_2.c assembly_parser.c -o CA_MS_2
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
