@@ -104,19 +104,26 @@ void execute(struct decoded dec) {
     switch (dec.opcode) {
         case 0: // ADD
             printf(", ADD R%d, R%d\n",dec.r1,dec.r2);
-            registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
+            result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
+            carry = ((int)registers[dec.r1] + (int)registers[dec.r2]) > 0xFF;
+            overflow = (~(registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result) & 0x80) ? 1 : 0;
             break;
         case 1: // SUB
             printf(", SUB R%d, R%d\n",dec.r1,dec.r2);
             registers[dec.r1] = registers[dec.r1] - registers[dec.r2];
+            carry = registers[dec.r1] < registers[dec.r2];
+            overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[r1] ^ result)) & 0x80) ? 1 : 0;
+            registers[r1] = result;
             break;
         case 2: // MUL
             printf(", MUL R%d, R%d\n",dec.r1,dec.r2);
-            registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
+            result = registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
+            carry = ((int)registers[dec.r1] * (int)registers[dec.r2]) > 0xFF;
+            overflow = 0; 
             break;
         case 3: // MOVI
             printf(", LDI R%d, R%d\n",dec.r1,dec.immediate);
-            registers[dec.r1] = dec.immediate;
+            result = registers[dec.r1] = dec.immediate;
             break;
         case 4: // BEQZ
             printf(", BEQZ R%d, R%d\n",dec.r1,dec.immediate);
@@ -125,11 +132,11 @@ void execute(struct decoded dec) {
             break;
         case 5: // ANDI
             printf(", AND R%d, R%d\n",dec.r1,dec.immediate);
-            registers[dec.r1] = registers[dec.r1] & dec.immediate;
+            result = registers[dec.r1] = registers[dec.r1] & dec.immediate;
             break;
         case 6: // EOR
             printf(",EOR R%d, R%d\n",dec.r1,dec.r2);
-            registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
+            result = registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
             break;
         case 7: // BR
             printf(", BR R%d, %d\n",dec.r1, dec.r2);
