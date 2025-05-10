@@ -122,7 +122,7 @@ void execute(struct decoded dec) {
             overflow = 0; 
             break;
         case 3: // MOVI
-            printf(", LDI R%d, R%d\n",dec.r1,dec.immediate);
+            printf(", MOVI R%d, R%d\n",dec.r1,dec.immediate);
             result = registers[dec.r1] = dec.immediate;
             break;
         case 4: // BEQZ
