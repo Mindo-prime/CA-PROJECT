@@ -81,27 +81,32 @@ uint16_t getBinaryInstruction(char* instruction){
     return binaryInstruction;
 }
 
-uint16_t* parseInstructions(void) {
+uint16_t* parseInstructions(size_t* instructionCount) {
     FILE* file = fopen("assembly.txt", "r");
     if (file == NULL) {
         printf("Error opening file\n");
         return NULL;
     }
-
-    // Allocate memory dynamically
-    uint16_t* instructionMemory = (uint16_t*)malloc(1024 * sizeof(uint16_t));
+   
+    char line[256];
+    *instructionCount = 0;
+    while (fgets(line, sizeof(line), file)){
+        (*instructionCount)++;
+    }
+    uint16_t* instructionMemory = (uint16_t*)malloc((*instructionCount) * sizeof(uint16_t));
     if (instructionMemory == NULL) {
         printf("Memory allocation failed\n");
         fclose(file);
         return NULL;
     }
 
-    char line[256];
+    rewind(file);
     int i = 0;
     while (fgets(line, sizeof(line), file)) {
-        // Remove newline if present
         line[strcspn(line, "\n")] = 0;
+        printf("Parsing line: %s;\n", line);
         instructionMemory[i++] = getBinaryInstruction(line);
+        printf("Instruction %d:%04X\n", i, instructionMemory[i-1]);
     }
 
     fclose(file);

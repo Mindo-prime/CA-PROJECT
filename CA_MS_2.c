@@ -24,7 +24,7 @@ struct decoded {
 #define S_FLAG 1  // Sign Flag
 #define Z_FLAG 0  // Zero Flag
 
-extern uint16_t* parseInstructions(void);
+extern uint16_t* parseInstructions(size_t* NumberofInstructions); // is defined in assembly_parser.c
 
 void set_flag(int flag_bit) {
     SREG |= (1<<flag_bit);//1<<0,
@@ -78,14 +78,15 @@ struct decoded decode(int instruction) {
         decoded_instruction.r2 = 
             decoded_instruction.immediate=
                 decoded_instruction.address = instruction&0b111111;      
-
+       /* printf("\n---------- \n");
+        printf("decoding instruction %x\n",instruction);
         printf("Instruction %i\n",pc);
         printf("opcode = %i\n",decoded_instruction.opcode);
         printf("r1 = %i\n",decoded_instruction.r1);
         printf("r2 = %i\n",decoded_instruction.r2);
         printf("Immediate = %i\n",decoded_instruction.r2);
         printf("Address = %i\n",decoded_instruction.r2);
-        printf("---------- \n");
+        printf("\n---------- \n");*/
 
         return decoded_instruction;    
 }
@@ -96,35 +97,35 @@ void execute(struct decoded dec) {
     uint8_t result =0;
     switch (dec.opcode) {
         case 0: // ADD
-            printf(", ADD R%d, R%d\n",dec.r1,dec.r2);
+            printf("executing ADD R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
             carry = ((int)registers[dec.r1] + (int)registers[dec.r2]) > 0xFF;
             overflow = (~(registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result) & 0x80) ? 1 : 0;
             break;
         case 1: // SUB
-            printf(", SUB R%d, R%d\n",dec.r1,dec.r2);
+            printf("executing SUB R%d, R%d\n",dec.r1,dec.r2);
             registers[dec.r1] = registers[dec.r1] - registers[dec.r2];
             carry = registers[dec.r1] < registers[dec.r2];
             overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result)) & 0x80) ? 1 : 0;
             registers[dec.r1] = result;
             break;
         case 2: // MUL
-            printf(", MUL R%d, R%d\n",dec.r1,dec.r2);
+            printf("executing MUL R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
             carry = ((int)registers[dec.r1] * (int)registers[dec.r2]) > 0xFF;
             overflow = 0; 
             break;
         case 3: // MOVI
-            printf(", MOVI R%d, R%d\n",dec.r1,dec.immediate);
+            printf("executing MOVI R%d, R%d\n",dec.r1,dec.immediate);
             result = registers[dec.r1] = dec.immediate;
             break;
         case 4: // BEQZ
-            printf(", BEQZ R%d, R%d\n",dec.r1,dec.immediate);
+            printf("executing BEQZ R%d, R%d\n",dec.r1,dec.immediate);
             if (registers[dec.r1] == 0)
                 pc += dec.immediate; //+1 was already done in fetch phase
             break;
         case 5: // ANDI
-            printf(", AND R%d, R%d\n",dec.r1,dec.immediate);
+            printf("executing AND R%d, R%d\n",dec.r1,dec.immediate);
             result = registers[dec.r1] = registers[dec.r1] & dec.immediate;
             break;
         case 6: // EOR
@@ -132,27 +133,27 @@ void execute(struct decoded dec) {
             result = registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
             break;
         case 7: // BR
-            printf(", BR R%d, %d\n",dec.r1, dec.r2);
+            printf("executing BR R%d, %d\n",dec.r1, dec.r2);
             pc = (8<<registers[dec.r1]) | registers[dec.r2]; 
             break;
         case 8: // SAL
-            printf(", SAL R%d, %d\n",dec.r1, dec.immediate);
+            printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
             registers[dec.r1] = registers[dec.r1] << dec.immediate; 
             break;  
         case 9: // SAR
-            printf(", SAR %d\n", dec.immediate); //do we have to simulate sign extension?
+            printf("executing SAR %d\n", dec.immediate); //do we have to simulate sign extension?
             registers[dec.r1] =  registers[dec.r1]>>dec.immediate;
             break;
         case 10: // LDR
-            printf(", LB R%d, R%d\n",dec.r1,dec.address);
+            printf("executing LB R%d, R%d\n",dec.r1,dec.address);
             registers[dec.r1] = dataMemory[dec.address];
             break;
         case 11: // STR
-            printf(", SB R%d, %d\n",dec.r1, dec.address);
+            printf("executing SB R%d, %d\n",dec.r1, dec.address);
             dataMemory[dec.address] = registers[dec.r1];
             break;
         default:
-            printf(", Unknown opcode\n");
+            printf(" Unknown opcode\n");
     }
     update_flags(result,carry,overflow);
 }
@@ -163,14 +164,27 @@ void instruction_cycle(){
     execute(decoded_instruction);
 }
 
+void print_data() {
+    printf("Data Memory:\n");
+    for (int i = 0; i<5 && i < sizeof(dataMemory) / sizeof(dataMemory[0]); i++) {// 5 is just for testing, we can change it later
+        printf("Address %d: %d\n", i, dataMemory[i]);
+    }
+    printf("Registers:\n");
+    for (int i = 0; i<5 && i < sizeof(registers) / sizeof(registers[0]); i++) {
+        printf("R%d: %d\n", i, registers[i]);
+    }
+    printf("SREG: %x\n", SREG);
+}
+
 void main() {
-    uint16_t* loaded_instructions = parseInstructions(); //parseInstructions() is defined in assembly_parser.c
-    size_t NumberofInstructions = sizeof(loaded_instructions)/sizeof(loaded_instructions[0]);
-    for (int i = 0; i < NumberofInstructions; i++) {
+    size_t* NumberofInstructions;
+    uint16_t* loaded_instructions = parseInstructions(NumberofInstructions); //parseInstructions() is defined in assembly_parser.c
+    for (int i = 0; i < *NumberofInstructions; i++) {
         instructionMemory[i] = loaded_instructions[i];
     }
     free(loaded_instructions);
-    for (int i = 0; i < NumberofInstructions; i++) {
+    for (int i = 0; i < *NumberofInstructions; i++) {
         instruction_cycle();
-    }           
+    }        
+    print_data();  
 }
