@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h> 
+#include <stdlib.h>  
 
 enum instruction_type{
  register_type, 
@@ -7,31 +9,31 @@ enum instruction_type{
 };
 
 
-uint16_t* parseInstructions(){
-    FILE *file = fopen("assembly.txt", "r");
+uint16_t getBinaryInstructionHelper(int opcode,enum instruction_type type){
+    uint16_t binaryInstruction = (opcode << 12); 
+    char* token = strtok(NULL, " ");
 
-    if (file == NULL) {
-        printf("Error opening file\n");
-        return 0;
+    int r1 = atoi(&token[1]);
+    binaryInstruction |= (r1 << 6); 
+
+    token = strtok(NULL, " ");
+    if (type == register_type) {
+        int r2 = atoi(&token[1]);
+        if (r2 < 0 || r2 > 63) {
+            printf("Error: Register value out of range\n");
+            return -1;
+        }
+        binaryInstruction |= (r2 << 0); 
+    } else if (type == immediate_type) {
+        int immediate = atoi(token);
+        if (immediate < 0 || immediate > 0x3F) {
+            printf("Error: Immediate value out of range\n");
+            return -1;
+        }
+        binaryInstruction |= immediate ; 
     }
 
-   
-    uint16_t instructionCount = 0;
-    char* instruction;
-    while (fscanf(file, "%hx", &instruction) != EOF) {
-        instructionCount++;
-    }
-    uint16_t instructionMemory[instructionCount];
-
-    int i = 0;
-    while (fscanf(file, "%hx", &instruction) != EOF && i < instructionCount) {
-        instructionMemory[i++] = getBinaryInstruction(instruction);
-        printf("Instruction %d: %s binaryInstruction: %04X\n",i,instruction, instructionMemory[i-1]);
-    }
-
-    fclose(file);
-
-    return instructionMemory;
+    return binaryInstruction;
 }
 
 uint16_t getBinaryInstruction(char* instruction){
@@ -79,29 +81,29 @@ uint16_t getBinaryInstruction(char* instruction){
     return binaryInstruction;
 }
 
-uint16_t getBinaryInstructionHelper(int opcode,enum instruction_type type){
-    uint16_t binaryInstruction = (opcode << 12); 
-    char* token = strtok(NULL, " ");
-
-    int r1 = atoi(&token[1]);
-    binaryInstruction |= (r1 << 6); 
-
-    token = strtok(NULL, " ");
-    if (type == register_type) {
-        int r2 = atoi(&token[1]);
-        if (r2 < 0 || r2 > 63) {
-            printf("Error: Register value out of range\n");
-            return -1;
-        }
-        binaryInstruction |= (r2 << 0); 
-    } else if (type == immediate_type) {
-        int immediate = atoi(token);
-        if (immediate < 0 || immediate > 0x3F) {
-            printf("Error: Immediate value out of range\n");
-            return -1;
-        }
-        binaryInstruction |= immediate ; 
+uint16_t* parseInstructions(void) {
+    FILE* file = fopen("assembly.txt", "r");
+    if (file == NULL) {
+        printf("Error opening file\n");
+        return NULL;
     }
 
-    return binaryInstruction;
+    // Allocate memory dynamically
+    uint16_t* instructionMemory = (uint16_t*)malloc(1024 * sizeof(uint16_t));
+    if (instructionMemory == NULL) {
+        printf("Memory allocation failed\n");
+        fclose(file);
+        return NULL;
+    }
+
+    char line[256];
+    int i = 0;
+    while (fgets(line, sizeof(line), file)) {
+        // Remove newline if present
+        line[strcspn(line, "\n")] = 0;
+        instructionMemory[i++] = getBinaryInstruction(line);
+    }
+
+    fclose(file);
+    return instructionMemory;
 }

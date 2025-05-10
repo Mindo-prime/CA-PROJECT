@@ -1,15 +1,8 @@
+//gcc program CA_MS_2.c assembly_parser.c -o CA_MS_2
 #include <stdio.h>
 #include <stdint.h>
-/*CA lab notes
-- Must convert instructions to binary, then convert it to decimal which will be stored in the memory array
-- read the tables instruction has an opcode. And its function.
-- split the instruction in to fields according to describion
-- to convert numbers to binary in c use bit masking, we can first shift left by the number of bits to the left, if it is in the center we can shift then we can and to remove bits to the right, 
-- example, (85976>>decimal no of bits) & 0b1111 this indicates that it is binary
--  fetch, decode, execute then memory
-- this is 90% of the project
-- pipeline still didn't take it
-*/
+#include <stdlib.h>
+
 uint16_t instructionMemory[1024];
 uint8_t dataMemory[2048];     
 uint8_t registers[64];
@@ -31,7 +24,7 @@ struct decoded {
 #define S_FLAG 1  // Sign Flag
 #define Z_FLAG 0  // Zero Flag
 
-#define NumberofInstructions 10
+extern uint16_t* parseInstructions(void);
 
 void set_flag(int flag_bit) {
     SREG |= (1<<flag_bit);//1<<0,
@@ -171,6 +164,12 @@ void instruction_cycle(){
 }
 
 void main() {
+    uint16_t* loaded_instructions = parseInstructions(); //parseInstructions() is defined in assembly_parser.c
+    size_t NumberofInstructions = sizeof(loaded_instructions)/sizeof(loaded_instructions[0]);
+    for (int i = 0; i < NumberofInstructions; i++) {
+        instructionMemory[i] = loaded_instructions[i];
+    }
+    free(loaded_instructions);
     for (int i = 0; i < NumberofInstructions; i++) {
         instruction_cycle();
     }           
