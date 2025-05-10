@@ -112,8 +112,8 @@ void execute(struct decoded dec) {
             printf(", SUB R%d, R%d\n",dec.r1,dec.r2);
             registers[dec.r1] = registers[dec.r1] - registers[dec.r2];
             carry = registers[dec.r1] < registers[dec.r2];
-            overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[r1] ^ result)) & 0x80) ? 1 : 0;
-            registers[r1] = result;
+            overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result)) & 0x80) ? 1 : 0;
+            registers[dec.r1] = result;
             break;
         case 2: // MUL
             printf(", MUL R%d, R%d\n",dec.r1,dec.r2);
