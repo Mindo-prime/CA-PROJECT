@@ -17,6 +17,14 @@ uint8_t registers[64];
 uint8_t SREG;
 uint16_t pc;
 
+struct decoded {
+    int opcode;
+    int r1;
+    int r2;
+    int immediate;
+    int address;
+};
+
 #define C_FLAG 4  // Carry Flag
 #define V_FLAG 3  // Overflow Flag
 #define N_FLAG 2  // Negative Flag
@@ -65,97 +73,83 @@ void update_flags(uint8_t result, int overflow, int carry) {
     }
 }
 // Binary int format in c is 0b00000000000000000000000000000000 (32 bits)
-void fetch() {
-       
-        int instruction = 0;
-       
-        // Complete the fetch() body...
-        for(int i = 0;i < NumberofInstructions; i++){
-            instruction = instructionMemory[i];
-            decode(instruction);
-            pc++;
-        }
-       
-        // Complete the fetch() body...
-       
+uint16_t fetch() {
+    return  instructionMemory[pc++];       
 }
 
-void decode(int instruction) {
+struct decoded decode(int instruction) {
        
-        int opcode = instruction>>12; 
-        int r1 = (instruction>>6)&0b111111;     
-        int r2_imm = instruction&0b111111;      
+        struct decoded decoded_instruction;
+        decoded_instruction.opcode = instruction>>12; 
+        decoded_instruction.r1 = (instruction>>6)&0b111111;     
+        decoded_instruction.r2 = 
+            decoded_instruction.immediate=
+                decoded_instruction.address = instruction&0b111111;      
 
-        execute(opcode,r1,r2_imm);  
-
-        // Printings
-       
         printf("Instruction %i\n",pc);
-        printf("opcode = %i\n",opcode);
-        printf("rs = %i\n",r1);
-        printf("rt = %i\n",r2_imm);
+        printf("opcode = %i\n",decoded_instruction.opcode);
+        printf("r1 = %i\n",decoded_instruction.r1);
+        printf("r2 = %i\n",decoded_instruction.r2);
+        printf("Immediate = %i\n",decoded_instruction.r2);
+        printf("Address = %i\n",decoded_instruction.r2);
         printf("---------- \n");
-            
+
+        return decoded_instruction;    
 }
 
-void execute(int opcode, int r1, int r2_imm) {
+void execute(struct decoded dec) {
     int carry = 0;
     int overflow =0;
     uint8_t result =0;
-    switch (opcode) {
+    switch (dec.opcode) {
         case 0: // ADD
-            printf(", ADD R%d, R%d\n",r1,r2_imm);
-            registers[r1] = registers[r1] + registers[r2_imm];
+            printf(", ADD R%d, R%d\n",dec.r1,dec.r2);
+            registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
             break;
         case 1: // SUB
-            printf(", SUB R%d, R%d\n",r1,r2_imm);
-            registers[r1] = registers[r1] - registers[r2_imm];
+            printf(", SUB R%d, R%d\n",dec.r1,dec.r2);
+            registers[dec.r1] = registers[dec.r1] - registers[dec.r2];
             break;
         case 2: // MUL
-            printf(", MUL R%d, R%d\n",r1,r2_imm);
-            registers[r1] = registers[r1] * registers[r2_imm];
+            printf(", MUL R%d, R%d\n",dec.r1,dec.r2);
+            registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
             break;
-        case 3: // LDI
-            printf(", LDI R%d, R%d\n",r1,r2_imm);
-            registers[r1] = r2_imm;
+        case 3: // MOVI
+            printf(", LDI R%d, R%d\n",dec.r1,dec.immediate);
+            registers[dec.r1] = dec.immediate;
             break;
         case 4: // BEQZ
-            printf(", BEQZ R%d, R%d\n",r1,r2_imm);
-            if (registers[r1] == 0) {
-                pc += r2_imm+1; 
-            }
+            printf(", BEQZ R%d, R%d\n",dec.r1,dec.immediate);
+            if (registers[dec.r1] == 0)
+                pc += dec.immediate; //+1 was already done in fetch phase
             break;
-        case 5: // AND
-            printf(", AND R%d, R%d\n",r1,r2_imm);
-            registers[r1] = registers[r1] & registers[r2_imm];
+        case 5: // ANDI
+            printf(", AND R%d, R%d\n",dec.r1,dec.immediate);
+            registers[dec.r1] = registers[dec.r1] & dec.immediate;
             break;
-        case 6: // OR
-            printf(", OR R%d, R%d\n",r1,r2_imm);
-            registers[r1] = registers[r1] | registers[r2_imm];
+        case 6: // EOR
+            printf(",EOR R%d, R%d\n",dec.r1,dec.r2);
+            registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
             break;
-        case 7: // JR
-            printf(", JR R%d, %d\n",r1, r2_imm);
-            pc = (8<<registers[r1]) | registers[r2_imm]; 
+        case 7: // BR
+            printf(", BR R%d, %d\n",dec.r1, dec.r2);
+            pc = (8<<registers[dec.r1]) | registers[dec.r2]; 
             break;
-        case 8: // SLC
-            printf(", SLC R%d, %d\n",r1, r2_imm);
-            uint8_t originalLeftPart = (registers[r1]>> (8-r2_imm)) & ((1<<r2_imm)-1); //the & is to remove 1's introduced from sign extension from shift operation if number is negative
-            registers[r1] = registers[r1] << r2_imm | originalLeftPart;
+        case 8: // SAL
+            printf(", SAL R%d, %d\n",dec.r1, dec.immediate);
+            registers[dec.r1] = registers[dec.r1] << dec.immediate; 
+            break;  
+        case 9: // SAR
+            printf(", SAR %d\n", dec.immediate); //do we have to simulate sign extension?
+            registers[dec.r1] =  registers[dec.r1]>>dec.immediate;
             break;
-            //01101000  slc r1 2    
-        case 9: // SRC
-            printf(", SRC %d\n", r2_imm);
-            uint8_t originalRightPart = registers[r1] & ((1<<r2_imm)-1); 
-            registers[r1] = originalRightPart | registers[r1]>>r2_imm;
+        case 10: // LDR
+            printf(", LB R%d, R%d\n",dec.r1,dec.address);
+            registers[dec.r1] = dataMemory[dec.address];
             break;
-            //01101001     2
-        case 10: // LB
-            printf(", LB R%d, R%d\n",r1,r2_imm);
-            registers[r1] = dataMemory[r2_imm];
-            break;
-        case 11: // SB
-            printf(", SB R%d, %d\n",r1, r2_imm);
-            dataMemory[r2_imm] = registers[r1];
+        case 11: // STR
+            printf(", SB R%d, %d\n",dec.r1, dec.address);
+            dataMemory[dec.address] = registers[dec.r1];
             break;
         default:
             printf(", Unknown opcode\n");
@@ -163,44 +157,14 @@ void execute(int opcode, int r1, int r2_imm) {
     update_flags(result,carry,overflow);
 }
 
-
+void instruction_cycle(){
+    uint16_t instruction = fetch();
+    struct decoded decoded_instruction = decode(instruction);
+    execute(decoded_instruction);
+}
 
 void main() {
-          
-    fetch();
-   
-    // Expected output
-   
-    /*
-   
-    Instruction 0
-    opcode = -5 (signed) or 11 (unsigned)
-    rs = 1
-    rt = 4
-    rd = 2
-    shift amount = 8
-    function = 2873
-    immediate = 166713
-    address = 21138233
-    value[rs] = 16
-    value[rt] = 102
-   
-    ----------
-   
-    Instruction 1
-    opcode = 3
-    rs = 11
-    rt = 2
-    rd = 12
-    shift amount = 9
-    function = 946
-    immediate = 824242
-    address = 187470770
-    value[rs] = 9
-    value[rt] = 87
-   
-    ----------
-   
-    */ 
-               
+    for (int i = 0; i < NumberofInstructions; i++) {
+        instruction_cycle();
+    }           
 }
