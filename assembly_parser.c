@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h> 
 #include <stdlib.h>  
+#include "instruction_set.h"
 
 enum instruction_type{
  register_type, 
@@ -42,40 +43,40 @@ uint16_t getBinaryInstruction(char* instruction){
     int opcode = 0;
   
     if (strcmp(token, "ADD") == 0) {
-        opcode = 0;
+        opcode = add_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,register_type);
     } else if (strcmp(token, "SUB") == 0) {
-        opcode = 1;
+        opcode = sub_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,register_type);
     } else if (strcmp(token, "MUL") == 0) {
-        opcode = 2;
+        opcode = mul_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,register_type);
     } else if (strcmp(token, "MOVI") == 0) {
-        opcode = 3;
+        opcode = movi_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     } else if (strcmp(token, "BEQZ") == 0) {
-        opcode = 4;
+        opcode = beqz_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     } else if (strcmp(token, "ANDI") == 0) {
-        opcode = 5;
+        opcode = andi_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,register_type);
     } else if (strcmp(token, "EOR") == 0) {
-        opcode = 6;
+        opcode = eor_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,register_type);
     } else if (strcmp(token, "BR") == 0) {
-        opcode = 7;
+        opcode = br_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     } else if (strcmp(token, "SAL") == 0) {
-        opcode = 8;
+        opcode = sal_opcode;
       binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     } else if (strcmp(token, "SAR") == 0) {
-        opcode = 9;
+        opcode = sar_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     }else if (strcmp(token, "LDR") == 0) {
-        opcode = 10;
+        opcode = ldr_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     }else if (strcmp(token, "STR") == 0) {
-        opcode = 11;
+        opcode = str_opcode;
         binaryInstruction = getBinaryInstructionHelper(opcode,immediate_type);
     }
     return binaryInstruction;

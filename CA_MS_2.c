@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "instruction_set.h"
 
 uint16_t instructionMemory[1024];
 uint8_t dataMemory[2048];     
@@ -96,57 +97,57 @@ void execute(struct decoded dec) {
     int overflow =0;
     uint8_t result =1;
     switch (dec.opcode) {
-        case 0: // ADD
+        case add_opcode: // ADD
             printf("executing ADD R%d, R%d\n",dec.r1,dec.r2);
             carry = ((int)registers[dec.r1] + (int)registers[dec.r2]) > 0xFF;
             result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
             overflow = (~(registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result) & 0x80) ? 1 : 0;
             break;
-        case 1: // SUB
+        case sub_opcode: // SUB
             printf("executing SUB R%d, R%d\n",dec.r1,dec.r2);
             carry = registers[dec.r1] < registers[dec.r2];
             result = registers[dec.r1] = registers[dec.r1] - registers[dec.r2]; 
             overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result)) & 0x80) ? 1 : 0;
             break;
-        case 2: // MUL
+        case mul_opcode: // MUL
             printf("executing MUL R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
             carry = ((int)registers[dec.r1] * (int)registers[dec.r2]) > 0xFF;
             break;
-        case 3: // MOVI
+        case movi_opcode: // MOVI
             printf("executing MOVI R%d, %d\n",dec.r1,dec.immediate);
             registers[dec.r1] = dec.immediate;
             break;
-        case 4: // BEQZ
+        case beqz_opcode: // BEQZ
             printf("executing BEQZ R%d, R%d\n",dec.r1,dec.immediate);
             if (registers[dec.r1] == 0)
                 pc += dec.immediate; //+1 was already done in fetch phase
             break;
-        case 5: // ANDI
+        case andi_opcode: // ANDI
             printf("executing AND R%d, R%d\n",dec.r1,dec.immediate);
             result = registers[dec.r1] = registers[dec.r1] & dec.immediate;
             break;
-        case 6: // EOR
+        case eor_opcode: // EOR
             printf("executing EOR R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
             break;
-        case 7: // BR
+        case br_opcode: // BR
             printf("executing BR R%d, %d\n",dec.r1, dec.r2);
             pc = (8<<registers[dec.r1]) | registers[dec.r2]; 
             break;
-        case 8: // SAL
+        case sal_opcode: // SAL
             printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
             registers[dec.r1] = registers[dec.r1] << dec.immediate; 
             break;  
-        case 9: // SAR
+        case sar_opcode: // SAR
             printf("executing SAR %d\n", dec.immediate); 
             registers[dec.r1] = ((int8_t)registers[dec.r1]) >> dec.immediate;
             break;
-        case 10: // LDR
+        case ldr_opcode: // LDR
             printf("executing LB R%d, R%d\n",dec.r1,dec.address);
             registers[dec.r1] = dataMemory[dec.address];
             break;
-        case 11: // STR
+        case str_opcode: // STR
             printf("executing SB R%d, %d\n",dec.r1, dec.address);
             dataMemory[dec.address] = registers[dec.r1];
             break;
@@ -156,7 +157,7 @@ void execute(struct decoded dec) {
     update_flags(result,carry,overflow);
 }
 
-void instruction_cycle(){
+void single_instruction_cycle(){
     uint16_t instruction = fetch();
     struct decoded decoded_instruction = decode(instruction);
     execute(decoded_instruction);
@@ -182,7 +183,7 @@ void main() {
     }
     free(loaded_instructions);
     for (int i = 0; i < *NumberofInstructions; i++) {
-        instruction_cycle();
+        single_instruction_cycle();
     }        
     print_data();  
 }
