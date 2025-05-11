@@ -94,30 +94,28 @@ struct decoded decode(int instruction) {
 void execute(struct decoded dec) {
     int carry = 0;
     int overflow =0;
-    uint8_t result =0;
+    uint8_t result =1;
     switch (dec.opcode) {
         case 0: // ADD
             printf("executing ADD R%d, R%d\n",dec.r1,dec.r2);
-            result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
             carry = ((int)registers[dec.r1] + (int)registers[dec.r2]) > 0xFF;
+            result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
             overflow = (~(registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result) & 0x80) ? 1 : 0;
             break;
         case 1: // SUB
             printf("executing SUB R%d, R%d\n",dec.r1,dec.r2);
-            registers[dec.r1] = registers[dec.r1] - registers[dec.r2];
             carry = registers[dec.r1] < registers[dec.r2];
+            result = registers[dec.r1] = registers[dec.r1] - registers[dec.r2]; 
             overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result)) & 0x80) ? 1 : 0;
-            registers[dec.r1] = result;
             break;
         case 2: // MUL
             printf("executing MUL R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
             carry = ((int)registers[dec.r1] * (int)registers[dec.r2]) > 0xFF;
-            overflow = 0; 
             break;
         case 3: // MOVI
-            printf("executing MOVI R%d, R%d\n",dec.r1,dec.immediate);
-            result = registers[dec.r1] = dec.immediate;
+            printf("executing MOVI R%d, %d\n",dec.r1,dec.immediate);
+            registers[dec.r1] = dec.immediate;
             break;
         case 4: // BEQZ
             printf("executing BEQZ R%d, R%d\n",dec.r1,dec.immediate);
@@ -129,7 +127,7 @@ void execute(struct decoded dec) {
             result = registers[dec.r1] = registers[dec.r1] & dec.immediate;
             break;
         case 6: // EOR
-            printf(",EOR R%d, R%d\n",dec.r1,dec.r2);
+            printf("executing EOR R%d, R%d\n",dec.r1,dec.r2);
             result = registers[dec.r1] = registers[dec.r1] ^ registers[dec.r2];
             break;
         case 7: // BR
@@ -141,8 +139,8 @@ void execute(struct decoded dec) {
             registers[dec.r1] = registers[dec.r1] << dec.immediate; 
             break;  
         case 9: // SAR
-            printf("executing SAR %d\n", dec.immediate); //do we have to simulate sign extension?
-            registers[dec.r1] =  registers[dec.r1]>>dec.immediate;
+            printf("executing SAR %d\n", dec.immediate); 
+            registers[dec.r1] = ((int8_t)registers[dec.r1]) >> dec.immediate;
             break;
         case 10: // LDR
             printf("executing LB R%d, R%d\n",dec.r1,dec.address);
