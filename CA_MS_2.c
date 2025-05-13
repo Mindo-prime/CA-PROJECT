@@ -19,6 +19,28 @@ struct decoded {
     int address;
 };
 
+// Behold the intermideate reg
+// Between Fetch and Decode
+typedef struct {
+    uint16_t instr;
+    uint16_t pc_plus;
+    int      valid;
+} IF_ID_t;
+
+// Between Decode and Execute
+typedef struct {
+    int      opcode, r1, r2;
+    int16_t  imm;      
+    uint8_t  regval1, regval2;
+    uint16_t pc_plus;
+    int      valid;
+} ID_EX_t;
+
+
+IF_ID_t  IF_ID = {0};
+ID_EX_t  ID_EX = {0};
+
+
 #define C_FLAG 4  // Carry Flag
 #define V_FLAG 3  // Overflow Flag
 #define N_FLAG 2  // Negative Flag
@@ -133,7 +155,7 @@ void execute(struct decoded dec) {
             break;
         case br_opcode: // BR
             printf("executing BR R%d, %d\n",dec.r1, dec.r2);
-            pc = (8<<registers[dec.r1]) | registers[dec.r2]; 
+            pc = (registers[dec.r1] >> 8) | registers[dec.r2];// Not sure if that is correct bro my friend said r1 >>  8
             break;
         case sal_opcode: // SAL
             printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
@@ -174,6 +196,34 @@ void print_data() {
     }
     printf("SREG: %x\n", SREG);
 }
+struct decoded *decodedInstruction;
+void pipelined_cycle(){
+    //execute_stage
+    if(ID_EX.valid){
+        execute(*decodedInstruction);
+    }
+    //decode_stage;
+    ID_EX.valid = IF_ID.valid;
+    ID_EX.pc_plus = IF_ID.pc_plus;
+    if (IF_ID.valid) {
+        *decodedInstruction = decode(IF_ID.instr);
+    
+        ID_EX.opcode = decodedInstruction->opcode;
+        ID_EX.r1 = decodedInstruction->r1;
+        ID_EX.r2 = decodedInstruction->r2;
+        ID_EX.imm = decodedInstruction->immediate;
+        ID_EX.regval1 = registers[decodedInstruction->r1];
+        ID_EX.regval2 = registers[decodedInstruction->r2];
+    }
+    //fetch_stage
+    if(pc <1024){
+        IF_ID.instr = fetch();
+        IF_ID.pc_plus = pc;
+        IF_ID.valid = 1;
+    }else{
+        IF_ID.valid = 0;
+    }
+}
 
 void main() {
     size_t* NumberofInstructions;
@@ -186,4 +236,10 @@ void main() {
         single_instruction_cycle();
     }        
     print_data();  
+    IF_ID.valid = 0;
+    ID_EX.valid = 0;
+    pc = 0;
+    for (int i = 0; i < *NumberofInstructions + 2; i++) {
+        pipelined_cycle();
+    }    
 }
