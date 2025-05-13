@@ -88,6 +88,15 @@ uint16_t* parseInstructions(size_t* instructionCount) {
         printf("Error opening file\n");
         return NULL;
     }
+    // Add this check
+    if (instructionCount == NULL) {
+        printf("Error: NULL pointer for instructionCount\n");
+        fclose(file);
+        return NULL;
+    }
+    
+    printf("Parsing instructions from file...\n");
+    
    
     char line[256];
     *instructionCount = 0;

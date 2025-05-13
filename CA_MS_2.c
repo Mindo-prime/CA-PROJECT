@@ -207,7 +207,7 @@ void pipelined_cycle(){
     ID_EX.pc_plus = IF_ID.pc_plus;
     if (IF_ID.valid) {
         *decodedInstruction = decode(IF_ID.instr);
-    
+        
         ID_EX.opcode = decodedInstruction->opcode;
         ID_EX.r1 = decodedInstruction->r1;
         ID_EX.r2 = decodedInstruction->r2;
@@ -227,19 +227,25 @@ void pipelined_cycle(){
 
 void main() {
     size_t* NumberofInstructions;
+    NumberofInstructions = (size_t*)malloc(sizeof(size_t));
     uint16_t* loaded_instructions = parseInstructions(NumberofInstructions); //parseInstructions() is defined in assembly_parser.c
     for (int i = 0; i < *NumberofInstructions; i++) {
         instructionMemory[i] = loaded_instructions[i];
     }
     free(loaded_instructions);
-    for (int i = 0; i < *NumberofInstructions; i++) {
+    /*for (int i = 0; i < *NumberofInstructions; i++) {
         single_instruction_cycle();
-    }        
-    print_data();  
+    } */       
+    print_data(); 
+    printf("Pipelined execution:\n"); 
     IF_ID.valid = 0;
     ID_EX.valid = 0;
     pc = 0;
+    printf("Pipelined execution:\n");
+    decodedInstruction = (struct decoded*)malloc(sizeof(struct decoded));
     for (int i = 0; i < *NumberofInstructions + 2; i++) {
+        printf("Cycle %d:\n", i);
         pipelined_cycle();
     }    
+    print_data(); 
 }
