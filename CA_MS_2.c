@@ -39,7 +39,7 @@ typedef struct {
 
 IF_ID_t  IF_ID = {0};
 ID_EX_t  ID_EX = {0};
-
+int branched = 0;
 
 #define C_FLAG 4  // Carry Flag
 #define V_FLAG 3  // Overflow Flag
@@ -144,6 +144,7 @@ void execute(struct decoded dec) {
             printf("executing BEQZ R%d, R%d\n",dec.r1,dec.immediate);
             if (registers[dec.r1] == 0)
                 pc += dec.immediate; //+1 was already done in fetch phase
+                branched = 1;
             break;
         case andi_opcode: // ANDI
             printf("executing AND R%d, R%d\n",dec.r1,dec.immediate);
@@ -156,6 +157,7 @@ void execute(struct decoded dec) {
         case br_opcode: // BR
             printf("executing BR R%d, %d\n",dec.r1, dec.r2);
             pc = (registers[dec.r1] >> 8) | registers[dec.r2];// Not sure if that is correct bro my friend said r1 >>  8
+            branched = 1;
             break;
         case sal_opcode: // SAL
             printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
@@ -201,6 +203,11 @@ void pipelined_cycle(){
     //execute_stage
     if(ID_EX.valid){
         execute(*decodedInstruction);
+        if(branched){
+            ID_EX.valid = 0;
+            IF_ID.valid = 0;
+            branched = 0;
+        }
     }
     //decode_stage;
     ID_EX.valid = IF_ID.valid;
