@@ -13,8 +13,7 @@ uint16_t pc;
 
 uint8_t old_registers[64];    // To track register changes
 uint8_t old_dataMemory[2048]; // To track memory changes
-struct decoded *decodedInstruction;
-size_t* NumberofInstructions;
+size_t instructionCount;
 static int cycle_count = 0;
 
 struct decoded {
@@ -25,7 +24,7 @@ struct decoded {
     int address;
 };
 
-// Behold the intermideate reg
+// Behold the intermediate reg
 // Between Fetch and Decode
 typedef struct {
     uint16_t instr;
@@ -54,7 +53,7 @@ int valid = 0;
 #define S_FLAG 1  // Sign Flag
 #define Z_FLAG 0  // Zero Flag
 
-extern uint16_t* parseInstructions(size_t* NumberofInstructions); // is defined in assembly_parser.c
+extern uint16_t* parseInstructions(size_t* instructionCount); // is defined in assembly_parser.c
 
 void set_flag(int flag_bit) {
     SREG |= (1<<flag_bit);//1<<0,
@@ -64,35 +63,30 @@ void clear_flag(int flag_bit) {
     SREG &= ~(1<<flag_bit);
 }
 
+void update_flag(int flag_bit, int val) {
+    if (val) {
+        set_flag(flag_bit);
+    } else {
+        clear_flag(flag_bit);
+    }
+}
+
 int get_flag(int flag_bit) {
     return (SREG>>flag_bit)&0b1;
 }
 
-void update_flags(uint8_t result, int overflow, int carry) {
-    if (result == 0) {
-        set_flag(Z_FLAG);
-    } else {
-        clear_flag(Z_FLAG);
+void update_flags(uint8_t result, int opcode, int carry, int overflow) {
+    if (opcode == add_opcode || opcode == sub_opcode || opcode == mul_opcode || opcode == andi_opcode || opcode == eor_opcode
+        || opcode == sal_opcode || opcode == sar_opcode) {
+        update_flag(Z_FLAG, result == 0);
+        update_flag(N_FLAG, result & 0x80);
     }
-    if (result & 0x80) { //10000000
-        set_flag(N_FLAG);
-    } else {
-        clear_flag(N_FLAG);
+    if (opcode == add_opcode) { 
+        update_flag(C_FLAG, carry);
     }
-    if (overflow) {
-        set_flag(V_FLAG);
-    } else {
-        clear_flag(V_FLAG);
-    }
-    if (carry) {
-        set_flag(C_FLAG);
-    } else {
-        clear_flag(C_FLAG);
-    }
-    if (get_flag(N_FLAG) ^ get_flag(V_FLAG)){
-        set_flag(S_FLAG);
-    }else{
-        clear_flag(S_FLAG);
+    if (opcode == add_opcode || opcode == sub_opcode) {
+        update_flag(V_FLAG, overflow);
+        update_flag(S_FLAG, get_flag(N_FLAG) ^ get_flag(V_FLAG));
     }
 }
 // Binary int format in c is 0b00000000000000000000000000000000 (32 bits)
@@ -118,24 +112,26 @@ struct decoded decode(int instruction) {
 void execute(struct decoded dec) {
     int carry = 0;
     int overflow =0;
+    int shamt = 0;
     uint8_t result =1;
     switch (dec.opcode) {
         case add_opcode: // ADD
             printf("executing ADD R%d, R%d\n",dec.r1,dec.r2);
-            carry = ((int)registers[dec.r1] + (int)registers[dec.r2]) > 0xFF;
-            result = registers[dec.r1] = registers[dec.r1] + registers[dec.r2];
+            carry = ((unsigned int)registers[dec.r1] + (unsigned int)registers[dec.r2]) & 0x100 ? 1 : 0;
+            result = registers[dec.r1] + registers[dec.r2];
             overflow = (~(registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result) & 0x80) ? 1 : 0;
+            registers[dec.r1] = result;
             break;
         case sub_opcode: // SUB
             printf("executing SUB R%d, R%d\n",dec.r1,dec.r2);
-            carry = registers[dec.r1] < registers[dec.r2];
-            result = registers[dec.r1] = registers[dec.r1] - registers[dec.r2]; 
+            result = registers[dec.r1] - registers[dec.r2]; 
             overflow = (((registers[dec.r1] ^ registers[dec.r2]) & (registers[dec.r1] ^ result)) & 0x80) ? 1 : 0;
+            registers[dec.r1] = result;
             break;
         case mul_opcode: // MUL
             printf("executing MUL R%d, R%d\n",dec.r1,dec.r2);
-            result = registers[dec.r1] = registers[dec.r1] * registers[dec.r2];
-            carry = ((int)registers[dec.r1] * (int)registers[dec.r2]) > 0xFF;
+            result = registers[dec.r1] * registers[dec.r2];
+            registers[dec.r1] = result;
             break;
         case movi_opcode: // MOVI
             printf("executing MOVI R%d, %d\n",dec.r1,dec.immediate);
@@ -162,29 +158,31 @@ void execute(struct decoded dec) {
             break;
         case br_opcode: // BR
             printf("executing BR R%d, %d\n",dec.r1, dec.r2);
-            pc = ((uint16_t)registers[dec.r1] << 8) | registers[dec.r2];// Not sure if that is correct bro my friend said r1 >>  8
+            pc = ((uint16_t)registers[dec.r1] << 8) | registers[dec.r2];
             branched = 1;
             break;
         case sal_opcode: // SAL
             printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
-            registers[dec.r1] = registers[dec.r1] << dec.immediate; 
+            shamt = dec.immediate % 8;
+            registers[dec.r1] = registers[dec.r1] << shamt | registers[dec.r1] >> (8 - shamt); 
             break;  
         case sar_opcode: // SAR
             printf("executing SAR %d\n", dec.immediate); 
-            registers[dec.r1] = ((int8_t)registers[dec.r1]) >> dec.immediate;
+            shamt = dec.immediate % 8;
+            registers[dec.r1] = registers[dec.r1] >> shamt | registers[dec.r1] << (8 - shamt);
             break;
         case ldr_opcode: // LDR
-            printf("executing LB R%d, R%d\n",dec.r1,dec.address);
+            printf("executing LDR R%d, %d\n",dec.r1,dec.address);
             registers[dec.r1] = dataMemory[dec.address];
             break;
         case str_opcode: // STR
-            printf("executing SB R%d, %d\n",dec.r1, dec.address);
+            printf("executing STR R%d, %d\n",dec.r1, dec.address);
             dataMemory[dec.address] = registers[dec.r1];
             break;
         default:
             printf(" Unknown opcode\n");
     }
-    update_flags(result,carry,overflow);
+    update_flags(result,dec.opcode,carry,overflow);
 }
 
 void single_instruction_cycle(){
@@ -320,7 +318,7 @@ void print_final_state() {
     // Print instruction memory content
     printf("\nInstruction Memory:\n");
     printf("Address\tValue\tDisassembled\n");
-    for (int i = 0; i < *NumberofInstructions; i++) {
+    for (int i = 0; i < instructionCount; i++) {
         struct decoded instr = decode(instructionMemory[i]);
         printf("0x%04X: 0x%04X\t", i, instructionMemory[i]);
         
@@ -486,21 +484,20 @@ void pipelined_cycle(size_t totalInstructions, size_t* fetchedCount) {
 
 
 void main() {
-    NumberofInstructions = (size_t*)malloc(sizeof(size_t));
-    uint16_t* loaded_instructions = parseInstructions(NumberofInstructions); //parseInstructions() is defined in assembly_parser.c
-    for (int i = 0; i < *NumberofInstructions; i++) {
+    uint16_t* loaded_instructions = parseInstructions(&instructionCount); //parseInstructions() is defined in assembly_parser.c
+    for (int i = 0; i < instructionCount; i++) {
         instructionMemory[i] = loaded_instructions[i];
     }
     free(loaded_instructions);
 
     int i = 0;
-    while (i < *NumberofInstructions && pc < *NumberofInstructions) {
+    while (i < instructionCount && pc < instructionCount) {
         single_instruction_cycle();
         i++;
     } 
     print_data(); 
     printf("Pipelined execution:\n");
-    size_t totalInstructions = *NumberofInstructions;
+    size_t totalInstructions = instructionCount;
     size_t fetchedCount = 0;
     // Reset pipeline registers and PC
     IF_ID.valid = 0;
@@ -517,7 +514,7 @@ void main() {
     }
     // Execution loop
     int cycle = 0;
-    while (fetchedCount < totalInstructions || IF_ID.valid || ID_EX.valid) {
+    while (pc < totalInstructions && fetchedCount < totalInstructions || IF_ID.valid || ID_EX.valid) {
         cycle++;
         printf("\n===== CYCLE %d =====\n", cycle);
         printf("PC=%d, Fetched=%zu/%zu, IF_ID.valid=%d, ID_EX.valid=%d\n", pc, fetchedCount, totalInstructions, IF_ID.valid, ID_EX.valid);
@@ -526,5 +523,4 @@ void main() {
 
     print_final_state();
     // Print final state 
-    free(NumberofInstructions);
 }
