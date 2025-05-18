@@ -40,6 +40,7 @@ typedef struct {
 IF_ID_t  IF_ID = {0};
 ID_EX_t  ID_EX = {0};
 int branched = 0;
+int valid = 0;
 
 #define C_FLAG 4  // Carry Flag
 #define V_FLAG 3  // Overflow Flag
@@ -250,8 +251,9 @@ void main() {
     pc = 0;
     printf("Pipelined execution:\n");
     decodedInstruction = (struct decoded*)malloc(sizeof(struct decoded));
-    for (int i = 0; i < *NumberofInstructions + 2; i++) {
-        printf("Cycle %d:\n", i);
+    while(valid == 0|| IF_ID.valid == 1 || ID_EX.valid == 1){ {
+        valid = 1;
+        printf("Cycle %d:\n");
         pipelined_cycle();
     }    
     print_data(); 
