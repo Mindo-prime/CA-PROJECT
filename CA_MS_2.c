@@ -419,7 +419,7 @@ void pipelined_cycle(size_t totalInstructions, size_t* fetchedCount) {
         }
         
         // If PC changed, log it
-        if (pc != current_pc + (branched ? 0 : 1)) {
+        if (branched && pc != current_pc) {
             printf("\n  PC change in EXECUTE: %d -> %d (Branch taken)", 
                    current_pc, pc);
         }

@@ -13,4 +13,4 @@ MOVI R5 0
 BEQZ R5 3      
 MOVI R6 25     
 MOVI R7 30     
-MOVI R8 35     
+MOVI R8 31    
