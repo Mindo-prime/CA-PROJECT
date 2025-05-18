@@ -251,9 +251,8 @@ void main() {
     pc = 0;
     printf("Pipelined execution:\n");
     decodedInstruction = (struct decoded*)malloc(sizeof(struct decoded));
-    while(valid == 0|| IF_ID.valid == 1 || ID_EX.valid == 1){ {
+    while(valid == 0|| IF_ID.valid == 1 || ID_EX.valid == 1){ 
         valid = 1;
-        printf("Cycle %d:\n");
         pipelined_cycle();
     }    
     print_data(); 
