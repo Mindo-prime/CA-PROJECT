@@ -31,7 +31,7 @@ uint16_t getBinaryInstructionHelper(int opcode,enum instruction_type type){
             printf("Error: Immediate value out of range\n");
             return -1;
         }
-        binaryInstruction |= immediate ; 
+        binaryInstruction |= immediate & 0b111111; 
     }
 
     return binaryInstruction;
