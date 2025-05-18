@@ -101,24 +101,18 @@ uint16_t fetch() {
 }
 
 struct decoded decode(int instruction) {
-       
-        struct decoded decoded_instruction;
-        decoded_instruction.opcode = instruction>>12; 
-        decoded_instruction.r1 = (instruction>>6)&0b111111;     
-        decoded_instruction.r2 = 
-            decoded_instruction.immediate=
-                decoded_instruction.address = instruction&0b111111;      
-       /* printf("\n---------- \n");
-        printf("decoding instruction %x\n",instruction);
-        printf("Instruction %i\n",pc);
-        printf("opcode = %i\n",decoded_instruction.opcode);
-        printf("r1 = %i\n",decoded_instruction.r1);
-        printf("r2 = %i\n",decoded_instruction.r2);
-        printf("Immediate = %i\n",decoded_instruction.r2);
-        printf("Address = %i\n",decoded_instruction.r2);
-        printf("\n---------- \n");*/
-
-        return decoded_instruction;    
+    struct decoded decoded_instruction;
+    decoded_instruction.opcode = instruction>>12; 
+    decoded_instruction.r1 = (instruction>>6)&0b111111;     
+    decoded_instruction.r2 = decoded_instruction.address = instruction&0b111111;
+    
+    // Add sign extension for immediate values (6-bit to 32-bit)
+    decoded_instruction.immediate = instruction&0b111111;
+    if (decoded_instruction.immediate & 0x20) { // Check if bit 5 is set (negative)
+        decoded_instruction.immediate |= 0xFFFFFFC0; // Sign extend to 32 bits
+    }
+    
+    return decoded_instruction;  
 }
 
 void execute(struct decoded dec) {
