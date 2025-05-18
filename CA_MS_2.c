@@ -200,11 +200,13 @@ void print_data() {
     printf("SREG: %x\n", SREG);
 }
 struct decoded *decodedInstruction;
+size_t* NumberofInstructions;
 void pipelined_cycle(){
     //execute_stage
     if(ID_EX.valid){
         execute(*decodedInstruction);
         if(branched){
+            (*NumberofInstructions)-=2;
             ID_EX.valid = 0;
             IF_ID.valid = 0;
             branched = 0;
@@ -228,13 +230,13 @@ void pipelined_cycle(){
         IF_ID.instr = fetch();
         IF_ID.pc_plus = pc;
         IF_ID.valid = 1;
+        (*NumberofInstructions)--;
     }else{
         IF_ID.valid = 0;
     }
 }
 
 void main() {
-    size_t* NumberofInstructions;
     NumberofInstructions = (size_t*)malloc(sizeof(size_t));
     uint16_t* loaded_instructions = parseInstructions(NumberofInstructions); //parseInstructions() is defined in assembly_parser.c
     for (int i = 0; i < *NumberofInstructions; i++) {
@@ -251,9 +253,12 @@ void main() {
     pc = 0;
     printf("Pipelined execution:\n");
     decodedInstruction = (struct decoded*)malloc(sizeof(struct decoded));
-    while(valid == 0|| IF_ID.valid == 1 || ID_EX.valid == 1){ 
-        valid = 1;
+    while(*NumberofInstructions > 0){ 
         pipelined_cycle();
-    }    
+    } 
+    pipelined_cycle();
+    pipelined_cycle();   
     print_data(); 
+    free(decodedInstruction);  
+    free(NumberofInstructions);
 }
