@@ -27,7 +27,7 @@ uint16_t getBinaryInstructionHelper(int opcode,enum instruction_type type){
         binaryInstruction |= (r2 << 0); 
     } else if (type == immediate_type) {
         int immediate = atoi(token);
-        if (immediate < 0 || immediate > 0x3F) {
+        if (immediate < -32 || immediate > 31) {
             printf("Error: Immediate value out of range\n");
             return -1;
         }

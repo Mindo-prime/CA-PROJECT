@@ -163,13 +163,11 @@ void execute(struct decoded dec) {
             break;
         case sal_opcode: // SAL
             printf("executing SAL R%d, %d\n",dec.r1, dec.immediate);
-            shamt = dec.immediate % 8;
-            registers[dec.r1] = registers[dec.r1] << shamt | registers[dec.r1] >> (8 - shamt); 
+            registers[dec.r1] = registers[dec.r1] << dec.immediate; 
             break;  
         case sar_opcode: // SAR
             printf("executing SAR %d\n", dec.immediate); 
-            shamt = dec.immediate % 8;
-            registers[dec.r1] = registers[dec.r1] >> shamt | registers[dec.r1] << (8 - shamt);
+            registers[dec.r1] = ((int8_t)registers[dec.r1]) >> dec.immediate;
             break;
         case ldr_opcode: // LDR
             printf("executing LDR R%d, %d\n",dec.r1,dec.address);
@@ -271,7 +269,7 @@ void single_instruction_cycle(){
 
 void print_data() {
     printf("Data Memory:\n");
-    for (int i = 0; i<5 && i < sizeof(dataMemory) / sizeof(dataMemory[0]); i++) {// 5 is just for testing, we can change it later
+    for (int i = 0; i<5 && i < sizeof(dataMemory) / sizeof(dataMemory[0]); i++) {
         printf("Address %d: %d\n", i, dataMemory[i]);
     }
     printf("Registers:\n");
